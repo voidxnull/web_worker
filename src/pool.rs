@@ -1,9 +1,10 @@
 //! A small module that's intended to provide an example of creating a pool of
 //! web workers which can be used to execute `rayon`-style work.
 
-use futures::sync::oneshot;
-use futures::Future;
+use futures::channel::oneshot;
+use futures::{FutureExt, TryFutureExt};
 use std::cell::{RefCell, UnsafeCell};
+use std::future::Future;
 use std::mem;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
@@ -215,7 +216,7 @@ impl WorkerPool {
     pub fn run_notify<T>(
         &self,
         f: impl FnOnce() -> T + Send + 'static,
-    ) -> Result<impl Future<Item = T, Error = JsValue> + 'static, JsValue>
+    ) -> Result<impl Future<Output = T>, JsValue>
     where
         T: Send + 'static,
     {
@@ -233,7 +234,7 @@ impl WorkerPool {
             _ => unreachable!(),
         });
 
-        Ok(rx.map_err(|_| JsValue::undefined()))
+        Ok(rx.map(|res| res.unwrap()))
     }
 }
 
